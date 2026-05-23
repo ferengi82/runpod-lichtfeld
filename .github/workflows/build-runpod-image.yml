@@ -10,7 +10,7 @@ on:
       cuda_version:
         description: "CUDA image version"
         required: false
-        default: "12.6.3"
+        default: "12.8.0"
       build_cuda_min_sm:
         description: "Minimum CUDA SM for PTX-only portable build"
         required: false
@@ -37,9 +37,8 @@ concurrency:
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/lichtfeld-studio-runpod
   DEFAULT_LICHTFELD_REF: master
-  DEFAULT_CUDA_VERSION: "12.6.3"
+  DEFAULT_CUDA_VERSION: "12.8.0"
   DEFAULT_BUILD_CUDA_MIN_SM: "75"
-  DEFAULT_CUDA_DRIVER_DEV_PACKAGE: cuda-driver-dev-12-6
 
 jobs:
   build:
@@ -99,7 +98,6 @@ jobs:
             CUDA_VERSION=${{ github.event.inputs.cuda_version || env.DEFAULT_CUDA_VERSION }}
             LICHTFELD_REF=${{ steps.upstream.outputs.sha }}
             BUILD_CUDA_MIN_SM=${{ github.event.inputs.build_cuda_min_sm || env.DEFAULT_BUILD_CUDA_MIN_SM }}
-            CUDA_DRIVER_DEV_PACKAGE=${{ env.DEFAULT_CUDA_DRIVER_DEV_PACKAGE }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
