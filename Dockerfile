@@ -36,7 +36,7 @@ RUN ARCH="$(uname -m)" && \
     /tmp/cmake.sh --skip-license --prefix=/usr/local && \
     rm /tmp/cmake.sh
 
-RUN git clone --depth=1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" && \
+RUN git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" && \
     "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
 WORKDIR /opt
