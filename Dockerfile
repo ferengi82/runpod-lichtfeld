@@ -67,7 +67,8 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
       -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
       -DBUILD_PORTABLE=ON \
       -DBUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM} \
-      -DLFS_ENFORCE_LINUX_GUI_BACKENDS=OFF && \
+      -DLFS_ENFORCE_LINUX_GUI_BACKENDS=OFF \
+      -DBUILD_PYTHON_STUBS=OFF && \
     cmake --build build --parallel "${CMAKE_BUILD_PARALLEL_LEVEL}" && \
     cmake --install build --prefix /opt/lichtfeld-dist
 
