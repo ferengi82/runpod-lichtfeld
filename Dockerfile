@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1.7
 
-ARG CUDA_VERSION=12.8.0
+ARG CUDA_VERSION=12.6.3
 FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu24.04 AS build
 
 ARG LICHTFELD_REPO=https://github.com/MrNeRF/LichtFeld-Studio.git
 ARG LICHTFELD_REF=master
 ARG BUILD_CUDA_MIN_SM=75
 ARG CMAKE_VERSION=4.0.3
+ARG CUDA_DRIVER_DEV_PACKAGE=cuda-driver-dev-12-6
 
 ENV DEBIAN_FRONTEND=noninteractive \
     VCPKG_ROOT=/opt/vcpkg \
@@ -26,7 +27,7 @@ RUN apt-get update && \
       libwayland-dev libxkbcommon-dev libegl-dev libdecor-0-dev \
       libibus-1.0-dev libdbus-1-dev libsystemd-dev \
       nasm autoconf autoconf-archive automake libtool \
-      cuda-driver-dev-12-8 \
+      ${CUDA_DRIVER_DEV_PACKAGE} \
       ccache && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 60 && \
