@@ -1,0 +1,109 @@
+name: build-runpod-image
+
+on:
+  workflow_dispatch:
+    inputs:
+      lichtfeld_ref:
+        description: "LichtFeld-Studio ref/branch/SHA to build"
+        required: false
+        default: "master"
+      cuda_version:
+        description: "CUDA image version"
+        required: false
+        default: "12.8.0"
+      build_cuda_min_sm:
+        description: "Minimum CUDA SM for PTX-only portable build"
+        required: false
+        default: "75"
+  schedule:
+    # Daily at 04:00 UTC. The Docker cache makes unchanged upstream refs cheap.
+    - cron: "0 4 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "Dockerfile"
+      - "runpod-start.sh"
+      - ".github/workflows/build-runpod-image.yml"
+      - ".dockerignore"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-runpod-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/lichtfeld-studio-runpod
+  DEFAULT_LICHTFELD_REF: master
+  DEFAULT_CUDA_VERSION: "12.8.0"
+  DEFAULT_BUILD_CUDA_MIN_SM: "75"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout this build repo
+        uses: actions/checkout@v4
+
+      - name: Resolve upstream LichtFeld ref
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF="${{ github.event.inputs.lichtfeld_ref || env.DEFAULT_LICHTFELD_REF }}"
+          SHA="$(git ls-remote https://github.com/MrNeRF/LichtFeld-Studio.git "$REF" | awk '{print $1}' | head -n1)"
+          if [[ -z "$SHA" ]]; then
+            # Allow direct SHA/manual detached ref.
+            SHA="$REF"
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved LichtFeld ref '$REF' to '$SHA'"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=upstream-${{ steps.upstream.outputs.sha }}
+            type=raw,value=run-${{ github.run_number }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            CUDA_VERSION=${{ github.event.inputs.cuda_version || env.DEFAULT_CUDA_VERSION }}
+            LICHTFELD_REF=${{ steps.upstream.outputs.sha }}
+            BUILD_CUDA_MIN_SM=${{ github.event.inputs.build_cuda_min_sm || env.DEFAULT_BUILD_CUDA_MIN_SM }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print RunPod image
+        run: |
+          echo "RunPod image: $IMAGE_NAME:latest"
+          echo "Pinned image: $IMAGE_NAME:upstream-${{ steps.upstream.outputs.sha }}"
