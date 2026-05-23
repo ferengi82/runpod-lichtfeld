@@ -21,6 +21,7 @@ RUN apt-get update && \
       python3 python3-dev python3-pip python3-full \
       ninja-build \
       libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev \
+      libgtk-3-dev \
       libwayland-dev libxkbcommon-dev libegl-dev libdecor-0-dev \
       libibus-1.0-dev libdbus-1-dev libsystemd-dev \
       nasm autoconf autoconf-archive automake libtool \
@@ -86,6 +87,7 @@ RUN apt-get update && \
       libxinerama1 libxcursor1 libx11-6 libxext6 libxi6 libxrandr2 libxrender1 \
       libwayland-client0 libwayland-cursor0 libwayland-egl1 libxkbcommon0 \
       libegl1 libdecor-0-0 libibus-1.0-5 libdbus-1-3 libsystemd0 \
+      libgtk-3-0 \
       libglu1-mesa libgl1 libvulkan1 && \
     rm -rf /var/lib/apt/lists/*
 
