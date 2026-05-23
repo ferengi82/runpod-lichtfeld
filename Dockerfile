@@ -26,11 +26,12 @@ RUN apt-get update && \
       libwayland-dev libxkbcommon-dev libegl-dev libdecor-0-dev \
       libibus-1.0-dev libdbus-1-dev libsystemd-dev \
       nasm autoconf autoconf-archive automake libtool \
+      cuda-driver-dev-12-8 \
       ccache && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 60 && \
     update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-14 60 && \
-    CUDA_STUB="$(find /usr/local/cuda -path "*/stubs/libcuda.so" | head -n1)" && \
+    CUDA_STUB="$(find /usr/local/cuda /usr/local/cuda-* /usr/lib -path "*/stubs/libcuda.so" 2>/dev/null | head -n1)" && \
     test -n "$CUDA_STUB" && \
     ln -sf "$CUDA_STUB" /usr/lib/x86_64-linux-gnu/libcuda.so && \
     ln -sf "$CUDA_STUB" /usr/lib/x86_64-linux-gnu/libcuda.so.1 && \
