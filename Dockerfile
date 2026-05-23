@@ -11,6 +11,7 @@ ARG CMAKE_VERSION=4.0.3
 ENV DEBIAN_FRONTEND=noninteractive \
     VCPKG_ROOT=/opt/vcpkg \
     PATH=/opt/vcpkg:/usr/local/bin:$PATH \
+    LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib/stubs:/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH \
     CMAKE_BUILD_PARALLEL_LEVEL=2 \
     VCPKG_MAX_CONCURRENCY=2
 
@@ -29,6 +30,7 @@ RUN apt-get update && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 60 && \
     update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-14 60 && \
+    find /usr/local/cuda -path "*/stubs/libcuda.so" -execdir sh -c "ln -sf libcuda.so libcuda.so.1" \; && \
     rm -rf /var/lib/apt/lists/*
 
 RUN ARCH="$(uname -m)" && \
