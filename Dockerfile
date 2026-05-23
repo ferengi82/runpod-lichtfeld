@@ -30,7 +30,11 @@ RUN apt-get update && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 60 && \
     update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-14 60 && \
-    find /usr/local/cuda -path "*/stubs/libcuda.so" -execdir sh -c "ln -sf libcuda.so libcuda.so.1" \; && \
+    CUDA_STUB="$(find /usr/local/cuda -path "*/stubs/libcuda.so" | head -n1)" && \
+    test -n "$CUDA_STUB" && \
+    ln -sf "$CUDA_STUB" /usr/lib/x86_64-linux-gnu/libcuda.so && \
+    ln -sf "$CUDA_STUB" /usr/lib/x86_64-linux-gnu/libcuda.so.1 && \
+    ldconfig && \
     rm -rf /var/lib/apt/lists/*
 
 RUN ARCH="$(uname -m)" && \
