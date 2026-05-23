@@ -41,10 +41,11 @@ RUN git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" && \
     "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
 WORKDIR /opt
-RUN git clone --depth=1 "$LICHTFELD_REPO" LichtFeld-Studio && \
+RUN git clone --depth=1 --recurse-submodules --shallow-submodules "$LICHTFELD_REPO" LichtFeld-Studio && \
     cd LichtFeld-Studio && \
     git fetch --depth=1 origin "$LICHTFELD_REF" || true && \
     git checkout "$LICHTFELD_REF" && \
+    git submodule update --init --recursive --depth=1 && \
     git rev-parse HEAD > /opt/lichtfeld-upstream-revision.txt
 
 WORKDIR /opt/LichtFeld-Studio
