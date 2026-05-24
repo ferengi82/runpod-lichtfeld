@@ -7,7 +7,7 @@ ARG LICHTFELD_REPO=https://github.com/MrNeRF/LichtFeld-Studio.git
 ARG LICHTFELD_REF=master
 ARG BUILD_CUDA_MIN_SM=75
 ARG CMAKE_VERSION=4.0.3
-ARG FILEBROWSER_VERSION=latest
+ARG FILEBROWSER_VERSION=v2.63.5
 
 ENV DEBIAN_FRONTEND=noninteractive \
     VCPKG_ROOT=/opt/vcpkg \
@@ -75,7 +75,7 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
 
 FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu24.04 AS runtime
 
-ARG FILEBROWSER_VERSION=latest
+ARG FILEBROWSER_VERSION=v2.63.5
 ARG LICHTFELD_REF=master
 ARG BUILD_CUDA_MIN_SM=75
 
@@ -116,11 +116,18 @@ RUN apt-get update && \
       libglu1-mesa libgl1 libvulkan1 libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
-RUN if [ "$FILEBROWSER_VERSION" = "latest" ]; then \
-      curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash; \
-    else \
-      curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash -s -- -v "$FILEBROWSER_VERSION"; \
-    fi
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64) FILEBROWSER_ARCH=amd64 ;; \
+      aarch64|arm64) FILEBROWSER_ARCH=arm64 ;; \
+      *) echo "Unsupported File Browser arch: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    FILEBROWSER_URL="https://github.com/filebrowser/filebrowser/releases/download/${FILEBROWSER_VERSION}/linux-${FILEBROWSER_ARCH}-filebrowser.tar.gz"; \
+    curl -fsSL "$FILEBROWSER_URL" -o /tmp/filebrowser.tar.gz; \
+    tar -xzf /tmp/filebrowser.tar.gz -C /usr/local/bin filebrowser; \
+    chmod +x /usr/local/bin/filebrowser; \
+    rm /tmp/filebrowser.tar.gz; \
+    filebrowser version
 
 COPY --from=build /opt/lichtfeld-dist /opt/lichtfeld-dist
 COPY --from=build /opt/lichtfeld-upstream-revision.txt /opt/lichtfeld-upstream-revision.txt
