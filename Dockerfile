@@ -111,7 +111,7 @@ RUN apt-get update && \
       libwayland-client0 libwayland-cursor0 libwayland-egl1 libxkbcommon0 \
       libegl1 libdecor-0-0 libibus-1.0-5 libdbus-1-3 libsystemd0 \
       libgtk-3-0 \
-      libglu1-mesa libgl1 libvulkan1 && \
+      libglu1-mesa libgl1 libvulkan1 libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN if [ "$FILEBROWSER_VERSION" = "latest" ]; then \
