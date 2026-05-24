@@ -153,15 +153,35 @@ EOF
   log "OpenSSH server started on port 22; credentials in $CREDS_FILE unless RUNPOD_SSH_PASSWORD was provided"
 }
 
+
+start_lichtfeld_webui() {
+  if [[ "${RUNPOD_ENABLE_LICHTFELD_WEBUI:-1}" != "1" ]]; then
+    log "LichtFeld WebUI disabled"
+    return 0
+  fi
+  local port="${RUNPOD_LICHTFELD_WEBUI_PORT:-7860}"
+  local webui_log="$LOG_DIR/lichtfeld-webui.log"
+  if [[ ! -d /opt/lichtfeld-webui/backend ]]; then
+    log "LichtFeld WebUI files not found; skipping"
+    return 0
+  fi
+  PYTHONPATH=/opt/lichtfeld-webui/backend \
+  RUNPOD_WORKSPACE=/workspace \
+  LICHTFELD_BIN=/opt/lichtfeld-dist/bin/run_lichtfeld.sh \
+  python3 -m uvicorn lichtfeld_webui.app:app --host 0.0.0.0 --port "$port" >> "$webui_log" 2>&1 &
+  log "LichtFeld WebUI started on port $port; log=$webui_log"
+}
+
 start_services() {
   print_banner
   start_gpu_monitor
   start_filebrowser
   start_ttyd
   start_sshd
+  start_lichtfeld_webui
   log "Service log: $SERVICES_LOG"
   log "GPU log: $GPU_LOG"
-  log "Suggested RunPod HTTP ports: File Browser=${RUNPOD_FILEBROWSER_PORT:-8080}, Web terminal=${RUNPOD_TTYD_PORT:-7681}; TCP SSH=22"
+  log "Suggested RunPod HTTP ports: File Browser=${RUNPOD_FILEBROWSER_PORT:-8080}, Web terminal=${RUNPOD_TTYD_PORT:-7681}, LichtFeld WebUI=${RUNPOD_LICHTFELD_WEBUI_PORT:-7860}; TCP SSH=22"
 }
 
 case "${1:-}" in

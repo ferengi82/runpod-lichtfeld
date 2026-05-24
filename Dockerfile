@@ -100,6 +100,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     RUNPOD_ENABLE_SSHD=1 \
     RUNPOD_ENABLE_GPU_MONITOR=1 \
     RUNPOD_GPU_MONITOR_INTERVAL=30 \
+    RUNPOD_ENABLE_LICHTFELD_WEBUI=1 \
+    RUNPOD_LICHTFELD_WEBUI_PORT=7860 \
     RUNPOD_LOG_DIR=/workspace/logs
 
 RUN apt-get update && \
@@ -122,11 +124,13 @@ RUN if [ "$FILEBROWSER_VERSION" = "latest" ]; then \
 
 COPY --from=build /opt/lichtfeld-dist /opt/lichtfeld-dist
 COPY --from=build /opt/lichtfeld-upstream-revision.txt /opt/lichtfeld-upstream-revision.txt
+COPY webui /opt/lichtfeld-webui
+RUN python3 -m pip install --break-system-packages --no-cache-dir -r /opt/lichtfeld-webui/backend/requirements.txt
 COPY runpod-start.sh /usr/local/bin/runpod-start.sh
 RUN chmod +x /usr/local/bin/runpod-start.sh && \
     mkdir -p /workspace/data /workspace/output /workspace/logs /run/sshd
 
-EXPOSE 22 8080 7681
+EXPOSE 22 8080 7681 7860
 WORKDIR /workspace
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/runpod-start.sh"]
 CMD ["services"]

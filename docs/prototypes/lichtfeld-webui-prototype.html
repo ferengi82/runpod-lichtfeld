@@ -1,0 +1,368 @@
+
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LichtFeld Studio WebUI Prototype</title>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --chrome: #252932;
+      --chrome-2: #2d323e;
+      --panel: #232832;
+      --panel-2: #1b2028;
+      --panel-3: #303642;
+      --line: #465064;
+      --line-soft: #343b48;
+      --text: #e3e7ee;
+      --muted: #9da6b5;
+      --dim: #737c8c;
+      --accent: #5aa7ff;
+      --accent-2: #77c8ff;
+      --accent-soft: rgba(90,167,255,.18);
+      --ok: #54d36d;
+      --warn: #f4c14f;
+      --danger: #ff6565;
+      --grid: rgba(118, 138, 165, .14);
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    .window {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 45px 1fr 25px;
+      background: #11151c;
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px 0 10px;
+      background: #edf7ea;
+      color: #171b22;
+      font-size: 15px;
+      letter-spacing: .1px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; }
+    .dot-logo {
+      width: 23px; height: 23px;
+      display: grid; grid-template-columns: repeat(4, 4px); gap: 2px;
+      opacity: .82;
+    }
+    .dot-logo span { width: 4px; height: 4px; background: #20242b; border-radius: 999px; }
+    .window-controls { display: flex; gap: 25px; font-size: 18px; align-items: center; }
+
+    .menubar {
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      padding: 0 18px;
+      background: #282d37;
+      color: #e4e7ec;
+      border-bottom: 1px solid #1d222b;
+      font-size: 17px;
+    }
+    .menu-item { opacity: .94; }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 76px minmax(620px, 1fr) 672px;
+      background: #10141b;
+    }
+
+    .toolbar-left {
+      background: #131820;
+      border-right: 1px solid #252b36;
+      padding: 9px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .tool-btn {
+      width: 48px; height: 48px;
+      display: grid; place-items: center;
+      border-radius: 3px;
+      color: #d2d8e3;
+      background: transparent;
+      border: 1px solid transparent;
+      font-size: 25px;
+      cursor: pointer;
+    }
+    .tool-btn.active { background: #69aaf9; color: #101827; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+    .tool-btn:hover { border-color: #586377; background: #242b36; }
+    .tool-btn.active:hover { background: #78b6ff; }
+
+    .viewport {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(transparent 95%, var(--grid) 96%),
+        linear-gradient(90deg, transparent 95%, var(--grid) 96%),
+        radial-gradient(circle at 55% 44%, rgba(40, 70, 105, .16), transparent 40%),
+        #020305;
+      background-size: 48px 48px, 48px 48px, auto, auto;
+      border-right: 1px solid #252b36;
+    }
+    .viewport:before {
+      content: "";
+      position: absolute;
+      inset: -18% -20%;
+      background:
+        linear-gradient(22deg, transparent 49.88%, rgba(70, 83, 103, .24) 50%, transparent 50.12%),
+        linear-gradient(-17deg, transparent 49.9%, rgba(70, 83, 103, .17) 50%, transparent 50.12%);
+      transform: perspective(900px) rotateX(60deg) translateY(110px) scale(1.2);
+      transform-origin: center bottom;
+      background-size: 86px 86px;
+      opacity: .9;
+    }
+    .axis-red, .axis-blue {
+      position: absolute; height: 2px; width: 150%; top: 63%; left: -22%; opacity: .65;
+      transform-origin: center;
+    }
+    .axis-red { background: #b52731; transform: rotate(16deg); }
+    .axis-blue { background: #2125c9; transform: rotate(-24deg); }
+
+    .drop-zone {
+      position: absolute;
+      inset: 7.3% 8.1% 7.1% 3.4%;
+      border: 2px dashed rgba(135, 172, 213, .78);
+      border-radius: 2px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: #cbd5e3;
+      background: linear-gradient(180deg, rgba(15, 21, 30, .08), rgba(0,0,0,.11));
+    }
+    .drop-card {
+      transform: translateY(80px);
+      display: grid;
+      gap: 11px;
+      justify-items: center;
+      text-shadow: 0 2px 12px rgba(0,0,0,.8);
+    }
+    .folder-icon {
+      width: 52px; height: 34px; border: 2px solid #87abd4; border-radius: 2px; position: relative;
+      box-shadow: 0 0 18px rgba(90,167,255,.13);
+    }
+    .folder-icon:before { content: ""; position: absolute; width: 22px; height: 10px; left: 7px; top: -10px; border: 2px solid #87abd4; border-bottom: 0; border-radius: 6px 6px 0 0; }
+    .drop-title { font-size: 15px; }
+    .drop-sub { font-size: 14px; color: #aab2c0; }
+    .drop-dim { font-size: 13px; color: #6f7888; }
+
+    .floating-tools {
+      position: absolute;
+      left: 50%; top: 8px; transform: translateX(-50%);
+      display: flex; gap: 15px; align-items: center;
+      background: rgba(41, 46, 57, .96);
+      border: 1px solid #171b23;
+      box-shadow: var(--shadow);
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 25px;
+      color: #cbd3df;
+    }
+    .axis-widget {
+      position: absolute; right: 22px; top: 13px; width: 92px; height: 88px; color: #dbe6f4;
+      font-size: 11px;
+    }
+    .axis-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+    .axis-x { left: 18px; top: 24px; background: #f05252; }
+    .axis-y { left: 39px; top: 0; background: #70ce43; }
+    .axis-z { left: 58px; top: 24px; background: #3b9df5; }
+    .ring { position: absolute; width: 20px; height: 20px; border: 5px solid currentColor; border-radius: 50%; opacity: .9; }
+    .ring.r1 { color: #479cf0; left: 10px; top: 43px; }
+    .ring.r2 { color: #82d648; left: 40px; top: 63px; }
+    .ring.r3 { color: #e74349; left: 71px; top: 43px; }
+
+    .inspector {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: 318px 1fr;
+      background: var(--panel);
+      border-left: 1px solid #1d222c;
+    }
+    .tabs {
+      display: flex; align-items: end; gap: 7px;
+      padding: 10px 12px 0;
+      background: #252b35;
+    }
+    .tab {
+      min-width: 116px;
+      padding: 10px 15px 9px;
+      border: 1px solid #4a5266;
+      color: #aeb6c4;
+      background: #2a2f3b;
+      font-size: 17px;
+      border-radius: 5px 5px 0 0;
+    }
+    .tab.active { color: #eaf1fa; border-color: #416fa6; box-shadow: inset 0 -3px 0 var(--accent); background: #2b323e; }
+    .scene-panel { border-bottom: 8px solid #343e4d; background: #252a34; }
+    .search { margin: 6px 12px 0; height: 36px; border: 1px solid #495468; background: #222733; display: flex; align-items: center; padding: 0 11px; color: #9fa8b8; }
+    .empty-scene { padding: 27px 16px; color: #aeb6c4; line-height: 1.75; font-size: 15px; }
+
+    .settings { min-height: 0; overflow: auto; background: #242934; }
+    .settings-tabs { position: sticky; top: 0; z-index: 2; display: flex; height: 50px; background: #2a303b; border-bottom: 8px solid #202530; }
+    .settings-tabs .tab2 { padding: 14px 22px 10px; color: #aab2c0; border-bottom: 3px solid transparent; font-size: 16px; }
+    .settings-tabs .tab2.active { color: #eef5ff; border-bottom-color: var(--accent); }
+    .section { margin: 8px 0; background: #202630; border-top: 1px solid #2f3644; border-bottom: 1px solid #2c3340; }
+    .section-title { color: #6fb3ff; font-weight: 700; padding: 10px 15px; font-size: 15px; }
+    .form { padding: 2px 16px 16px; display: grid; gap: 12px; }
+    .row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 14px; min-height: 28px; color: #e0e5ed; font-size: 15px; }
+    .input, .select, .mini, .button { height: 30px; border: 1px solid #4b5568; background: #2b303c; color: #edf3fb; padding: 0 10px; font: inherit; }
+    .select { display: flex; align-items: center; justify-content: space-between; }
+    .select:after { content: ""; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 12px solid #aeb7c6; }
+    .slider { height: 26px; border-radius: 8px; border: 1px solid #495266; background: linear-gradient(90deg, #4d86c6 var(--value, 55%), #303744 var(--value,55%)); position: relative; }
+    .slider span { position: absolute; right: 8px; top: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #e5ebf4; font-size: 13px; }
+    .check { width: 25px; height: 25px; border: 1px solid #4b5568; background: #252b36; display: grid; place-items: center; color: white; }
+    .check.on { background: #5aa7ff; border-color: #6fb3ff; }
+    .button { display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; cursor: pointer; }
+    .button.primary { background: #3f7fc3; border-color: #69aaf9; }
+    .button.danger { background: #4a2730; border-color: #8a4b56; color: #ffb4bd; }
+    .command-box { background: #131820; border: 1px solid #3d4658; padding: 11px; color: #b8c5d7; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+    .log-box { background: #090c11; border: 1px solid #303846; padding: 10px; height: 142px; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #9fb0c8; line-height: 1.55; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .metric { background: #1a2029; border: 1px solid #333c4b; padding: 9px; min-height: 60px; }
+    .metric b { display: block; color: #e9f1fb; font-size: 18px; margin-bottom: 3px; }
+    .metric span { color: #8c98aa; font-size: 12px; }
+
+    .statusbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 10px;
+      background: #272d37;
+      border-top: 1px solid #38404d;
+      color: #97a1b0;
+      font-size: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .status-right { display: flex; gap: 18px; align-items: center; }
+    .blue { color: #58a9ff; } .green { color: #71d76e; } .red { color: #ff6b6b; } .yellow { color: #ffd166; }
+
+    @media (max-width: 1400px) {
+      .workspace { grid-template-columns: 64px minmax(460px,1fr) 520px; }
+      .row { grid-template-columns: 145px 1fr; }
+      .tab { min-width: 96px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="window">
+    <nav class="menubar" aria-label="Hauptmenü">
+      <span class="menu-item">File</span><span class="menu-item">Edit</span><span class="menu-item">Tools</span><span class="menu-item">View</span><span class="menu-item">Help</span>
+    </nav>
+
+    <section class="workspace">
+      <aside class="toolbar-left" aria-label="Werkzeuge">
+        <button class="tool-btn active" title="Scene">◎</button>
+        <button class="tool-btn" title="Datasets">◎</button>
+        <button class="tool-btn" title="Import">◉</button>
+        <button class="tool-btn" title="Home">⌂</button>
+        <button class="tool-btn" title="Training">◌</button>
+        <button class="tool-btn active" title="Rendering">◔</button>
+        <button class="tool-btn" title="Outputs">❖</button>
+        <button class="tool-btn" title="Logs">✓</button>
+        <button class="tool-btn" title="Terminal">▣</button>
+      </aside>
+
+      <section class="viewport" aria-label="Viewport">
+        <div class="axis-red"></div><div class="axis-blue"></div>
+        <div class="floating-tools" aria-hidden="true"><span>⌁</span><span>↱</span><span>⊕</span><span>⌙</span><span>◭</span><span>⌁</span><span>□</span></div>
+        <div class="axis-widget" aria-hidden="true">
+          <div class="axis-dot axis-x">X</div><div class="axis-dot axis-y">Y</div><div class="axis-dot axis-z">Z</div>
+          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+        </div>
+        <div class="drop-zone">
+          <div class="drop-card">
+            <div class="folder-icon"></div>
+            <div class="drop-title">COLMAP Dataset auswählen oder hier ablegen</div>
+            <div class="drop-sub">Erwartet: images/ und sparse/0/ unter /workspace/data</div>
+            <div class="drop-dim">Aktuell erkannt: <span class="blue">garden_colmap</span> · 238 Bilder · bereit für Training</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <section class="scene-panel">
+          <div class="tabs"><div class="tab active">Scene</div><div class="tab">History</div><div class="tab">Logging</div></div>
+          <div class="search">⌕&nbsp;&nbsp;Scene durchsuchen</div>
+          <div class="empty-scene">
+            <div><b>garden_colmap</b></div>
+            <div class="blue">COLMAP dataset loaded</div>
+            <div>images: 238 · sparse: cameras.bin, images.bin, points3D.bin</div>
+            <div style="margin-top:16px;color:#778293">Output: /workspace/output/garden-20260524-1518</div>
+          </div>
+        </section>
+
+        <section class="settings">
+          <div class="settings-tabs"><div class="tab2">Rendering</div><div class="tab2 active">Training</div><div class="tab2">Output</div></div>
+
+          <div class="section">
+            <div class="section-title">▼ Training Job</div>
+            <div class="form">
+              <div class="metric-grid">
+                <div class="metric"><b class="green">Ready</b><span>Status</span></div>
+                <div class="metric"><b>0 / 7000</b><span>Iteration</span></div>
+                <div class="metric"><b class="yellow">RTX 4080</b><span>GPU</span></div>
+              </div>
+              <div class="row"><label>Dataset:</label><div class="select">garden_colmap</div></div>
+              <div class="row"><label>Strategy:</label><div class="select">mcmc</div></div>
+              <div class="row"><label>Iterations:</label><input class="input" value="7000" /></div>
+              <div class="row"><label>Max Width:</label><input class="input" value="3840" /></div>
+              <div class="row"><label>Resize Factor:</label><div class="select">auto</div></div>
+              <div class="row"><label>GUT (3DGUT):</label><div class="check"></div></div>
+              <div class="row"><label>Command:</label><div class="command-box">run_lichtfeld.sh --headless --train -d /workspace/data/garden_colmap -o /workspace/output/garden-20260524-1518 -i 7000 --strategy mcmc --max-width 3840</div></div>
+              <div class="row"><span></span><div style="display:flex;gap:10px"><button class="button primary">Start Training</button><button class="button danger">Stop</button></div></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">▼ GPU & Runtime</div>
+            <div class="form">
+              <div class="row"><label>GPU Memory:</label><div class="slider" style="--value:16%"><span>2.7 / 17.2 GB</span></div></div>
+              <div class="row"><label>GPU Utilization:</label><div class="slider" style="--value:8%"><span>8%</span></div></div>
+              <div class="row"><label>Temperature:</label><div class="slider" style="--value:47%"><span>47°C</span></div></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">▼ Logs</div>
+            <div class="form">
+              <div class="log-box">[15:18:03] LichtFeld WebUI ready on :7860
+[15:18:04] Dataset scan: /workspace/data/garden_colmap
+[15:18:04] COLMAP structure valid
+[15:18:05] Waiting for training start...
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">▶ Camera & Projection</div>
+          </div>
+          <div class="section">
+            <div class="section-title">▶ Export & Viewer</div>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <footer class="statusbar">
+      <span>Ready · COLMAP dataset loaded</span>
+      <div class="status-right"><span>RunPod</span><span>GeForce RTX 4080</span><span class="blue">LFS Web 0.1</span><span class="green">GPU 2.7/17.2GB</span><span class="red">8 FPS</span></div>
+    </footer>
+  </main>
+</body>
+</html>

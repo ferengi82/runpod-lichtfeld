@@ -31,6 +31,7 @@ ghcr.io/OWNER/lichtfeld-studio-runpod:upstream-<sha>
   - `LFS_ENFORCE_LINUX_GUI_BACKENDS=OFF`
   - PTX-only CUDA build via `BUILD_CUDA_MIN_SM`
 - RunPod workspace at `/workspace`
+- LichtFeld Studio WebUI on HTTP port `7860` for COLMAP dataset selection, training start/stop, logs and GPU status
 
 ## GitHub Actions
 
@@ -85,7 +86,7 @@ Show version/help:
 version
 ```
 
-Run LichtFeld directly:
+Open the WebUI in RunPod via HTTP port `7860`, or run LichtFeld directly:
 
 ```bash
 lichtfeld --help
