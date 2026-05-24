@@ -1,3 +1,5 @@
 # local scratch
 workspace/
 .env
+__pycache__/
+*.py[cod]
