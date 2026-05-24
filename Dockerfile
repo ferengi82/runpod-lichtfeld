@@ -87,7 +87,8 @@ LABEL org.opencontainers.image.title="LichtFeld Studio RunPod Headless" \
 ENV DEBIAN_FRONTEND=noninteractive \
     NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
-    PATH=/opt/lichtfeld-dist/bin:$PATH \
+    PATH=$PATH:/opt/lichtfeld-dist/bin \
+    LD_LIBRARY_PATH=/opt/lichtfeld-dist/lib:/opt/lichtfeld-dist/bin:$LD_LIBRARY_PATH \
     LICHTFELD_HOME=/opt/lichtfeld-dist \
     LICHTFELD_REF=${LICHTFELD_REF} \
     BUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM} \
@@ -131,8 +132,12 @@ RUN set -eux; \
 
 COPY --from=build /opt/lichtfeld-dist /opt/lichtfeld-dist
 COPY --from=build /opt/lichtfeld-upstream-revision.txt /opt/lichtfeld-upstream-revision.txt
+RUN printf '%s\n' /opt/lichtfeld-dist/lib /opt/lichtfeld-dist/bin > /etc/ld.so.conf.d/lichtfeld.conf && \
+    ldconfig && \
+    ldd /opt/lichtfeld-dist/bin/LichtFeld-Studio | awk '/not found/ && $1 != "libcuda.so.1" { bad=1; print } END { exit bad }'
 COPY webui /opt/lichtfeld-webui
-RUN python3 -m pip install --break-system-packages --no-cache-dir -r /opt/lichtfeld-webui/backend/requirements.txt
+RUN /usr/bin/python3 -m pip install --break-system-packages --no-cache-dir -r /opt/lichtfeld-webui/backend/requirements.txt && \
+    PYTHONPATH=/opt/lichtfeld-webui/backend /usr/bin/python3 -c "import fastapi, uvicorn, lichtfeld_webui.app"
 COPY runpod-start.sh /usr/local/bin/runpod-start.sh
 RUN chmod +x /usr/local/bin/runpod-start.sh && \
     mkdir -p /workspace/data /workspace/output /workspace/logs /run/sshd

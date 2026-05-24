@@ -168,7 +168,7 @@ start_lichtfeld_webui() {
   PYTHONPATH=/opt/lichtfeld-webui/backend \
   RUNPOD_WORKSPACE=/workspace \
   LICHTFELD_BIN=/opt/lichtfeld-dist/bin/run_lichtfeld.sh \
-  python3 -m uvicorn lichtfeld_webui.app:app --host 0.0.0.0 --port "$port" >> "$webui_log" 2>&1 &
+  /usr/bin/python3 -m uvicorn lichtfeld_webui.app:app --host 0.0.0.0 --port "$port" >> "$webui_log" 2>&1 &
   log "LichtFeld WebUI started on port $port; log=$webui_log"
 }
 
