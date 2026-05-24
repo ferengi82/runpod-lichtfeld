@@ -7,6 +7,7 @@ ARG LICHTFELD_REPO=https://github.com/MrNeRF/LichtFeld-Studio.git
 ARG LICHTFELD_REF=master
 ARG BUILD_CUDA_MIN_SM=75
 ARG CMAKE_VERSION=4.0.3
+ARG FILEBROWSER_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
     VCPKG_ROOT=/opt/vcpkg \
@@ -74,6 +75,7 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
 
 FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu24.04 AS runtime
 
+ARG FILEBROWSER_VERSION=latest
 ARG LICHTFELD_REF=master
 ARG BUILD_CUDA_MIN_SM=75
 
@@ -88,11 +90,23 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/lichtfeld-dist/bin:$PATH \
     LICHTFELD_HOME=/opt/lichtfeld-dist \
     LICHTFELD_REF=${LICHTFELD_REF} \
-    BUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM}
+    BUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM} \
+    RUNPOD_ENABLE_FILEBROWSER=1 \
+    RUNPOD_FILEBROWSER_PORT=8080 \
+    RUNPOD_FILEBROWSER_ROOT=/workspace \
+    RUNPOD_FILEBROWSER_NOAUTH=1 \
+    RUNPOD_ENABLE_TTYD=1 \
+    RUNPOD_TTYD_PORT=7681 \
+    RUNPOD_ENABLE_SSHD=1 \
+    RUNPOD_ENABLE_GPU_MONITOR=1 \
+    RUNPOD_GPU_MONITOR_INTERVAL=30 \
+    RUNPOD_LOG_DIR=/workspace/logs
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ca-certificates bash git python3 python3-pip \
+      ca-certificates bash curl wget git python3 python3-pip \
+      openssh-server ttyd tini procps htop jq less nano vim-tiny \
+      iproute2 net-tools lsof rsync openssl \
       libxinerama1 libxcursor1 libx11-6 libxext6 libxi6 libxrandr2 libxrender1 \
       libwayland-client0 libwayland-cursor0 libwayland-egl1 libxkbcommon0 \
       libegl1 libdecor-0-0 libibus-1.0-5 libdbus-1-3 libsystemd0 \
@@ -100,12 +114,19 @@ RUN apt-get update && \
       libglu1-mesa libgl1 libvulkan1 && \
     rm -rf /var/lib/apt/lists/*
 
+RUN if [ "$FILEBROWSER_VERSION" = "latest" ]; then \
+      curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash; \
+    else \
+      curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash -s -- -v "$FILEBROWSER_VERSION"; \
+    fi
+
 COPY --from=build /opt/lichtfeld-dist /opt/lichtfeld-dist
 COPY --from=build /opt/lichtfeld-upstream-revision.txt /opt/lichtfeld-upstream-revision.txt
 COPY runpod-start.sh /usr/local/bin/runpod-start.sh
 RUN chmod +x /usr/local/bin/runpod-start.sh && \
-    mkdir -p /workspace/data /workspace/output
+    mkdir -p /workspace/data /workspace/output /workspace/logs /run/sshd
 
+EXPOSE 22 8080 7681
 WORKDIR /workspace
-ENTRYPOINT ["/usr/local/bin/runpod-start.sh"]
-CMD ["bash"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/runpod-start.sh"]
+CMD ["services"]
