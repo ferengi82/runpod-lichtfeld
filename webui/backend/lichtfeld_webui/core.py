@@ -13,6 +13,10 @@ from typing import Iterable, Literal
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"}
 VALID_STRATEGIES = {"mcmc", "mrnf", "igs+", "mnrf", "lfs"}
+POINTCLOUD_PREVIEW_EXTENSIONS = {".ply"}
+MESH_PREVIEW_EXTENSIONS = {".obj", ".glb", ".gltf"}
+HTML_PREVIEW_EXTENSIONS = {".html", ".htm"}
+DOWNLOAD_ONLY_EXTENSIONS = {".sog", ".spz", ".usd", ".usdz", ".rad", ".json", ".ckpt", ".pt"}
 
 
 @dataclass(slots=True)
@@ -36,6 +40,8 @@ class OutputFile:
     size_bytes: int
     modified_time: float
     kind: str
+    previewable: bool = False
+    preview_type: str = "download"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -206,6 +212,32 @@ def get_gpu_info() -> list[dict]:
     return parse_nvidia_smi_csv(proc.stdout)
 
 
+def resolve_output_path(root: str | Path, relative_path: str) -> Path | None:
+    root_path = Path(root).resolve()
+    candidate = (root_path / relative_path).resolve()
+    try:
+        candidate.relative_to(root_path)
+    except ValueError:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
+def classify_output_file(path: Path) -> tuple[str, bool, str]:
+    ext = path.suffix.lower()
+    kind = ext.lstrip(".") or "file"
+    if ext in POINTCLOUD_PREVIEW_EXTENSIONS:
+        return kind, True, "pointcloud"
+    if ext in MESH_PREVIEW_EXTENSIONS:
+        return kind, True, "mesh"
+    if ext in HTML_PREVIEW_EXTENSIONS:
+        return kind, True, "html"
+    if ext in DOWNLOAD_ONLY_EXTENSIONS:
+        return kind, False, "download"
+    return kind, False, "unsupported"
+
+
 def list_outputs(root: str | Path, limit: int = 200) -> list[OutputFile]:
     root = Path(root)
     if not root.exists():
@@ -218,8 +250,12 @@ def list_outputs(root: str | Path, limit: int = 200) -> list[OutputFile]:
             st = p.stat()
         except OSError:
             continue
-        ext = p.suffix.lower().lstrip(".") or "file"
-        files.append(OutputFile(p.name, str(p), st.st_size, st.st_mtime, ext))
+        kind, previewable, preview_type = classify_output_file(p)
+        try:
+            name = str(p.relative_to(root))
+        except ValueError:
+            name = p.name
+        files.append(OutputFile(name, str(p), st.st_size, st.st_mtime, kind, previewable, preview_type))
     files.sort(key=lambda item: item.modified_time, reverse=True)
     return files[:limit]
 

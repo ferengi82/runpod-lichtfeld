@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .core import TrainingManager, get_gpu_info, list_outputs, scan_datasets, tail_file
+from .core import TrainingManager, get_gpu_info, list_outputs, resolve_output_path, scan_datasets, tail_file
 
 WORKSPACE = Path(os.environ.get('RUNPOD_WORKSPACE', '/workspace'))
 DATA_ROOT = Path(os.environ.get('LICHTFELD_WEBUI_DATA_ROOT', str(WORKSPACE / 'data')))
@@ -82,6 +82,14 @@ def datasets() -> dict[str, Any]:
 @app.get('/api/outputs')
 def outputs() -> dict[str, Any]:
     return {'files': [f.to_dict() for f in list_outputs(OUTPUT_ROOT)]}
+
+
+@app.get('/api/outputs/file')
+def output_file(path: str):
+    resolved = resolve_output_path(OUTPUT_ROOT, path)
+    if resolved is None:
+        raise HTTPException(status_code=404, detail='output file not found')
+    return FileResponse(resolved)
 
 
 @app.get('/api/jobs/current')

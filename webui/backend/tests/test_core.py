@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lichtfeld_webui.core import build_train_command, parse_nvidia_smi_csv, scan_datasets
+from lichtfeld_webui.core import (
+    build_train_command,
+    list_outputs,
+    parse_nvidia_smi_csv,
+    resolve_output_path,
+    scan_datasets,
+)
 
 
 class CoreTests(unittest.TestCase):
@@ -75,6 +81,35 @@ class CoreTests(unittest.TestCase):
                 "temperature_c": 47,
             }
         ])
+
+    def test_list_outputs_marks_browser_previewable_formats(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "cloud.ply").write_bytes(b"ply")
+            (root / "mesh.glb").write_bytes(b"glb")
+            (root / "viewer.html").write_text("<html></html>")
+            (root / "scene.spz").write_bytes(b"spz")
+
+            outputs = {item.name: item.to_dict() for item in list_outputs(root)}
+
+        self.assertTrue(outputs["cloud.ply"]["previewable"])
+        self.assertEqual(outputs["cloud.ply"]["preview_type"], "pointcloud")
+        self.assertTrue(outputs["mesh.glb"]["previewable"])
+        self.assertEqual(outputs["mesh.glb"]["preview_type"], "mesh")
+        self.assertTrue(outputs["viewer.html"]["previewable"])
+        self.assertEqual(outputs["viewer.html"]["preview_type"], "html")
+        self.assertFalse(outputs["scene.spz"]["previewable"])
+        self.assertEqual(outputs["scene.spz"]["preview_type"], "download")
+
+    def test_resolve_output_path_rejects_path_traversal(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "safe.ply").write_bytes(b"ply")
+            safe = resolve_output_path(root, "safe.ply")
+            unsafe = resolve_output_path(root, "../secret.txt")
+
+        self.assertEqual(safe.name, "safe.ply")
+        self.assertIsNone(unsafe)
 
 
 if __name__ == "__main__":
