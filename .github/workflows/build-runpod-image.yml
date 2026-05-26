@@ -23,6 +23,7 @@ on:
     paths:
       - "Dockerfile"
       - "runpod-start.sh"
+      - "webui/**"
       - ".github/workflows/build-runpod-image.yml"
       - ".dockerignore"
 
