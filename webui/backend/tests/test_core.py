@@ -111,6 +111,15 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(safe.name, "safe.ply")
         self.assertIsNone(unsafe)
 
+    def test_webui_preview_auto_loads_visible_pointclouds(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn("autoLoaded", content)
+        self.assertIn("autoLoaded=true; loadPreview(newest);", content)
+        self.assertIn("sizeAttenuation:false", content)
+        self.assertNotIn("PointsMaterial({size:0.01", content)
+
 
 if __name__ == "__main__":
     unittest.main()
