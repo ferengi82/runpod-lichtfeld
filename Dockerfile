@@ -48,6 +48,8 @@ RUN ARCH="$(uname -m)" && \
 RUN git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" && \
     "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
+COPY docker/vcpkg-triplets /opt/vcpkg-triplets
+
 WORKDIR /opt
 RUN git clone --depth=1 --recurse-submodules --shallow-submodules "$LICHTFELD_REPO" LichtFeld-Studio && \
     cd LichtFeld-Studio && \
@@ -66,6 +68,9 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
       -DCMAKE_CUDA_HOST_COMPILER=g++-14 \
       -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
       -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
+      -DVCPKG_TARGET_TRIPLET=x64-linux-release \
+      -DVCPKG_HOST_TRIPLET=x64-linux-release \
+      -DVCPKG_OVERLAY_TRIPLETS=/opt/vcpkg-triplets \
       -DBUILD_PORTABLE=ON \
       -DBUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM} \
       -DLFS_ENFORCE_LINUX_GUI_BACKENDS=OFF \
