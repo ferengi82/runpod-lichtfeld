@@ -13,8 +13,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VCPKG_ROOT=/opt/vcpkg \
     PATH=/opt/vcpkg:/usr/local/bin:$PATH \
     LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib/stubs:/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH \
-    CMAKE_BUILD_PARALLEL_LEVEL=2 \
-    VCPKG_MAX_CONCURRENCY=2
+    CMAKE_BUILD_PARALLEL_LEVEL=1 \
+    VCPKG_MAX_CONCURRENCY=1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
