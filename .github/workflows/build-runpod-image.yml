@@ -26,6 +26,7 @@ on:
       - "webui/**"
       - ".github/workflows/build-runpod-image.yml"
       - ".dockerignore"
+      - "docker/**"
 
 permissions:
   contents: read
