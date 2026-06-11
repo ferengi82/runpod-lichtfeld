@@ -17,6 +17,8 @@ POINTCLOUD_PREVIEW_EXTENSIONS = {".ply"}
 MESH_PREVIEW_EXTENSIONS = {".obj", ".glb", ".gltf"}
 HTML_PREVIEW_EXTENSIONS = {".html", ".htm"}
 DOWNLOAD_ONLY_EXTENSIONS = {".sog", ".spz", ".usd", ".usdz", ".rad", ".json", ".ckpt", ".pt"}
+BASE_IMAGE_COUNT = 300
+BASE_ITERATIONS = 30_000
 
 
 @dataclass(slots=True)
@@ -131,6 +133,19 @@ def scan_datasets(root: str | Path) -> list[DatasetInfo]:
     return [d for d in datasets if d.type != "unknown" or d.image_count > 0]
 
 
+def auto_steps_scaler(image_count: int) -> float:
+    """Match LichtFeld Studio desktop autoScaleSteps: <=300 images -> 1.0, otherwise images/300."""
+    return 1.0 if image_count <= BASE_IMAGE_COUNT else image_count / BASE_IMAGE_COUNT
+
+
+def effective_iterations(base_iterations: int = BASE_ITERATIONS, image_count: int = 0) -> int:
+    return round(base_iterations * auto_steps_scaler(image_count))
+
+
+def format_float_arg(value: float) -> str:
+    return f"{value:g}"
+
+
 def build_train_command(
     *,
     lichtfeld_bin: str,
@@ -141,6 +156,7 @@ def build_train_command(
     max_width: int,
     resize_factor: str = "auto",
     gut: bool = False,
+    steps_scaler: float = 1.0,
 ) -> list[str]:
     if strategy not in VALID_STRATEGIES:
         raise ValueError(f"Unsupported strategy: {strategy}")
@@ -148,6 +164,8 @@ def build_train_command(
         raise ValueError("iterations must be greater than 0")
     if max_width < 0:
         raise ValueError("max_width must be >= 0")
+    if steps_scaler < 0:
+        raise ValueError("steps_scaler must be >= 0")
 
     cmd = [
         lichtfeld_bin,
@@ -168,6 +186,8 @@ def build_train_command(
     ]
     if resize_factor != "auto":
         cmd.extend(["--resize_factor", resize_factor])
+    if steps_scaler != 1.0:
+        cmd.extend(["--steps-scaler", format_float_arg(steps_scaler)])
     if gut:
         cmd.append("--gut")
     return cmd
@@ -285,6 +305,7 @@ class TrainingManager:
         max_width: int,
         resize_factor: str = "auto",
         gut: bool = False,
+        steps_scaler: float = 1.0,
     ) -> TrainingJob:
         with self._lock:
             self._refresh_locked()
@@ -306,6 +327,7 @@ class TrainingManager:
                 max_width=max_width,
                 resize_factor=resize_factor,
                 gut=gut,
+                steps_scaler=steps_scaler,
             )
             log_file = log_path.open("ab", buffering=0)
             log_file.write(("\n===== LichtFeld training started %s =====\n" % time.strftime("%Y-%m-%dT%H:%M:%S%z")).encode())

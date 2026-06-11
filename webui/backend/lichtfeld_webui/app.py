@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .core import TrainingManager, get_gpu_info, list_outputs, resolve_output_path, scan_datasets, tail_file
+from .core import BASE_ITERATIONS, TrainingManager, get_gpu_info, list_outputs, resolve_output_path, scan_datasets, tail_file
 
 WORKSPACE = Path(os.environ.get('RUNPOD_WORKSPACE', '/workspace'))
 DATA_ROOT = Path(os.environ.get('LICHTFELD_WEBUI_DATA_ROOT', str(WORKSPACE / 'data')))
@@ -27,7 +27,8 @@ manager = TrainingManager(WORKSPACE, LICHTFELD_BIN)
 class TrainStartRequest(BaseModel):
     dataset_path: str
     output_name: str | None = None
-    iterations: int = Field(default=7000, ge=1, le=1_000_000)
+    iterations: int = Field(default=BASE_ITERATIONS, ge=1, le=1_000_000)
+    steps_scaler: float = Field(default=1.0, ge=0, le=100)
     strategy: str = 'mcmc'
     max_width: int = Field(default=3840, ge=0, le=65535)
     resize_factor: str = 'auto'
@@ -63,7 +64,8 @@ def config() -> dict[str, Any]:
         'workspace': str(WORKSPACE),
         'data_root': str(DATA_ROOT),
         'output_root': str(OUTPUT_ROOT),
-        'default_iterations': 7000,
+        'default_iterations': BASE_ITERATIONS,
+        'base_image_count': 300,
         'strategies': ['mcmc', 'mrnf', 'igs+'],
         'resize_factors': ['auto', '1', '2', '4', '8'],
     }
@@ -115,6 +117,7 @@ def train_start(req: TrainStartRequest) -> dict[str, Any]:
             max_width=req.max_width,
             resize_factor=req.resize_factor,
             gut=req.gut,
+            steps_scaler=req.steps_scaler,
         )
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

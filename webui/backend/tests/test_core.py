@@ -4,7 +4,9 @@ import unittest
 from pathlib import Path
 
 from lichtfeld_webui.core import (
+    auto_steps_scaler,
     build_train_command,
+    effective_iterations,
     list_outputs,
     parse_nvidia_smi_csv,
     resolve_output_path,
@@ -67,6 +69,33 @@ class CoreTests(unittest.TestCase):
         self.assertIn("/workspace/output/run 1", cmd)
         self.assertNotIn("--resize_factor", cmd)
 
+
+    def test_auto_steps_scaler_matches_desktop_formula(self):
+        self.assertEqual(auto_steps_scaler(0), 1.0)
+        self.assertEqual(auto_steps_scaler(300), 1.0)
+        self.assertAlmostEqual(auto_steps_scaler(450), 1.5)
+        self.assertAlmostEqual(auto_steps_scaler(600), 2.0)
+
+    def test_effective_iterations_scales_like_desktop_steps(self):
+        self.assertEqual(effective_iterations(30000, 300), 30000)
+        self.assertEqual(effective_iterations(30000, 450), 45000)
+        self.assertEqual(effective_iterations(30000, 333), 33300)
+
+    def test_build_train_command_can_pass_desktop_steps_scaler_without_shell_interpolation(self):
+        cmd = build_train_command(
+            lichtfeld_bin='/opt/lichtfeld-dist/bin/run_lichtfeld.sh',
+            dataset_path='/workspace/data/big-scene',
+            output_path='/workspace/output/big-scene',
+            iterations=30000,
+            strategy='mrnf',
+            max_width=3840,
+            steps_scaler=2.0,
+        )
+
+        self.assertIn('--steps-scaler', cmd)
+        self.assertEqual(cmd[cmd.index('--steps-scaler') + 1], '2')
+        self.assertEqual(cmd[cmd.index('-i') + 1], '30000')
+
     def test_parse_nvidia_smi_csv(self):
         rows = "NVIDIA GeForce RTX 4080, 17, 2730, 17190, 8, 47\n"
 
@@ -115,10 +144,87 @@ class CoreTests(unittest.TestCase):
         html = Path(__file__).resolve().parents[2] / "static" / "index.html"
         content = html.read_text()
 
-        self.assertIn("autoLoaded", content)
-        self.assertIn("autoLoaded=true; loadPreview(newest);", content)
+        self.assertIn("currentPreviewName", content)
+        self.assertIn("newest.name!==currentPreviewName", content)
+        self.assertIn("function outputMatchesSelectedDataset(file)", content)
+        self.assertIn("files.filter(outputMatchesSelectedDataset)", content)
+        self.assertIn("refreshOutputs();", content)
+        self.assertIn("loadPreview(newest);", content)
         self.assertIn("sizeAttenuation:false", content)
         self.assertNotIn("PointsMaterial({size:0.01", content)
+
+    def test_webui_preview_applies_lichtfeld_y_axis_correction(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn("function applyLichtfeldPreviewTransform(obj)", content)
+        self.assertIn("obj.scale.y *= -1", content)
+        self.assertIn("applyLichtfeldPreviewTransform(obj);", content)
+
+    def test_webui_preview_uses_gaussian_splat_renderer_for_ply_outputs(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn("@mkkellogg/gaussian-splats-3d", content)
+        self.assertIn("function canRenderAsGaussianSplat(file)", content)
+        self.assertIn("new GaussianSplats3D.Viewer", content)
+        self.assertIn("GaussianSplats3D.SceneFormat.Ply", content)
+        self.assertIn("scale:[1,1,1]", content)
+        self.assertIn("function lichtfeldViewDirection()", content)
+        self.assertIn("new THREE.Vector3(0.55,-0.42,1).normalize()", content)
+        self.assertIn("function fitGaussianSplatPreview(attempt=0)", content)
+        self.assertIn("getSplatTree", content)
+        self.assertIn("mesh.boundingBox", content)
+        self.assertIn("mesh.calculatedSceneCenter", content)
+        self.assertIn("function scheduleGaussianSplatFit()", content)
+        self.assertIn("splatViewer.controls?.target?.copy(center)", content)
+        self.assertIn("scheduleGaussianSplatFit(); splatViewer.start();", content)
+        self.assertIn("Pointcloud-Fallback", content)
+
+
+    def test_webui_axis_widget_follows_active_camera(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn('id="axis-canvas"', content)
+        self.assertIn("const axisRoot = new THREE.Group()", content)
+        self.assertIn("function activePreviewCamera()", content)
+        self.assertIn("return splatViewer?.camera || camera3d", content)
+        self.assertIn("function updateAxisWidget()", content)
+        self.assertIn("axisRoot.quaternion.copy(cam.quaternion).invert()", content)
+        self.assertIn("axisRoot.scale.y=-1", content)
+        self.assertIn("y:new THREE.Vector3(0,-1.22,0)", content)
+        self.assertIn("updateAxisWidget();", content)
+
+
+    def test_webui_dataset_change_refreshes_matching_outputs_across_script_scopes(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn("window.refreshOutputs?.();", content)
+        self.assertIn("window.refreshOutputs=refreshOutputs", content)
+        self.assertIn("window.resetPreviewStateForDataset?.();", content)
+        self.assertIn("function selectedDatasetName()", content)
+        self.assertIn("function outputMatchesSelectedDataset(file)", content)
+
+    def test_webui_auto_iterations_from_dataset_image_count(self):
+        html = Path(__file__).resolve().parents[2] / 'static' / 'index.html'
+        content = html.read_text()
+
+        self.assertIn('id="steps-scaler"', content)
+        self.assertIn('id="effective-iterations"', content)
+        self.assertIn('const BASE_ITERATIONS=30000', content)
+        self.assertIn('function autoStepsScaler(imageCount)', content)
+        self.assertIn('Math.max(1, imageCount/300)', content)
+        self.assertIn('function applyAutoIterationsForDataset()', content)
+        self.assertIn('steps_scaler:autoStepsScaler(d.image_count)', content)
+        self.assertIn('--steps-scaler', content)
+
+    def test_webui_defaults_strategy_to_mrnf(self):
+        html = Path(__file__).resolve().parents[2] / "static" / "index.html"
+        content = html.read_text()
+
+        self.assertIn('<option selected>mrnf</option>', content)
 
 
 if __name__ == "__main__":
