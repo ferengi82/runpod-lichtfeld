@@ -71,6 +71,9 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg \
       -DVCPKG_TARGET_TRIPLET=x64-linux-release \
       -DVCPKG_HOST_TRIPLET=x64-linux-release \
       -DVCPKG_OVERLAY_TRIPLETS=/opt/vcpkg-triplets \
+      -DCMAKE_INSTALL_BINDIR=bin \
+      -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_DATADIR=share \
       -DBUILD_PORTABLE=ON \
       -DBUILD_CUDA_MIN_SM=${BUILD_CUDA_MIN_SM} \
       -DLFS_ENFORCE_LINUX_GUI_BACKENDS=OFF \
