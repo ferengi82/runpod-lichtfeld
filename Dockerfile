@@ -56,6 +56,7 @@ RUN git clone --depth=1 --recurse-submodules --shallow-submodules "$LICHTFELD_RE
     git fetch --depth=1 origin "$LICHTFELD_REF" || true && \
     git checkout "$LICHTFELD_REF" && \
     git submodule update --init --recursive --depth=1 && \
+    python3 -c 'from pathlib import Path; p=Path("src/visualizer/CMakeLists.txt"); s=p.read_text(); old="target_link_libraries(lfs_visualizer PUBLIC lfs_rmlui)"; new="target_link_libraries(lfs_visualizer PUBLIC lfs_rmlui RmlUi::RmlUi)"; raise SystemExit("Expected Linux RmlUI link line not found") if old not in s and new not in s else p.write_text(s.replace(old,new))' && \
     git rev-parse HEAD > /opt/lichtfeld-upstream-revision.txt
 
 WORKDIR /opt/LichtFeld-Studio
